@@ -13,7 +13,14 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import environ
 import os
+import firebase_admin
+from firebase_admin import credentials
 
+# Path to the Firebase service account key
+cred = credentials.Certificate('path/to/your-firebase-adminsdk.json')
+
+# Initialize the Firebase app
+firebase_admin.initialize_app(cred)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

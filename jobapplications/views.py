@@ -4,6 +4,11 @@ from rest_framework.response import Response
 from .models import JobApplication
 from .serializers import JobApplicationSerializer
 from django.conf import settings
+from firebase_admin import storage
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+
 class JobApplicationViewSet(viewsets.ModelViewSet):
     queryset = JobApplication.objects.all()
     serializer_class = JobApplicationSerializer
@@ -13,11 +18,40 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         try:
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            print(f"Error: {e}")  # Log error
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            job_data = serializer.validated_data
 
+            # Upload the resume to Firebase Storage
+            resume_file = request.FILES.get('resume')
+            if resume_file:
+                bucket = storage.bucket()
+                blob = bucket.blob(f"resumes/{resume_file.name}")
+                blob.upload_from_file(resume_file)
+
+                # Optionally, you can add the resume URL to Firestore
+                resume_url = blob.public_url
+
+                db = firestore.client()
+                db.collection('job_applications').add({
+                    'first_name': job_data.get('first_name'),
+                    'last_name': job_data.get('last_name'),
+                    'email': job_data.get('email'),
+                    'phone': job_data.get('phone'),
+                    'title': job_data.get('title'),
+                    'resume_url': resume_url,
+                    'country_code': job_data.get('country_code'),
+                    'street': job_data.get('street'),
+                    'zip_code': job_data.get('zip_code'),
+                    'city': job_data.get('city'),
+                    'state': job_data.get('state'),
+                    'country': job_data.get('country'),
+                    'submitted_at': job_data.get('submitted_at')
+                })
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PaymentViewSet(viewsets.ViewSet):
 
